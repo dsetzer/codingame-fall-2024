@@ -1,6 +1,8 @@
 import java.util.*;
 
 class Player {
+    private ResourceManager resourceManager;
+    private PodManager podManager;
     private static City city;
     private static TransportationAI ai;
     private static GameState gameState;
@@ -35,36 +37,57 @@ class Player {
     }
 
     private static void parseInput(Scanner in) {
-        int resources = in.nextInt();
-        city.setResources(resources);
-
+        resources = in.nextInt();
         int numTravelRoutes = in.nextInt();
+
+        // Parse travel routes (tubes and teleporters)
         for (int i = 0; i < numTravelRoutes; i++) {
             int buildingId1 = in.nextInt();
             int buildingId2 = in.nextInt();
             int capacity = in.nextInt();
-            // Update city with this travel route information
-            city.addOrUpdateTube(buildingId1, buildingId2, capacity);
+
+            if (capacity > 0) {
+                city.addOrUpdateTube(buildingId1, buildingId2, capacity);
+            } else {
+                // Teleporter (capacity == 0)
+                city.addTeleporter(new Teleporter(city.getBuildingById(buildingId1), city.getBuildingById(buildingId2)));
+            }
         }
 
+        // Parse pods
         int numPods = in.nextInt();
-        if (in.hasNextLine()) {
-            in.nextLine();
-        }
         for (int i = 0; i < numPods; i++) {
-            String podProperties = in.nextLine();
-            // Parse podProperties and update city
-            parsePodProperties(podProperties);
+            int podId = in.nextInt();
+            int numStops = in.nextInt();
+            List<Building> path = new ArrayList<>();
+            for (int j = 0; j < numStops; j++) {
+                int buildingId = in.nextInt();
+                path.add(city.getBuildingById(buildingId));
+            }
+            city.addPod(new TransportPod(podId, path));
         }
 
+        // Parse new buildings
         int numNewBuildings = in.nextInt();
-        if (in.hasNextLine()) {
-            in.nextLine();
-        }
         for (int i = 0; i < numNewBuildings; i++) {
-            String buildingProperties = in.nextLine();
-            // Parse buildingProperties and update city
-            parseBuildingProperties(buildingProperties);
+            int buildingType = in.nextInt();
+            int buildingId = in.nextInt();
+            int x = in.nextInt();
+            int y = in.nextInt();
+
+            if (buildingType == 0) {
+                // Landing pad
+                int numAstronauts = in.nextInt();
+                Map<Integer, Integer> astronautTypes = new HashMap<>();
+                for (int j = 0; j < numAstronauts; j++) {
+                    int type = in.nextInt();
+                    astronautTypes.merge(type, 1, Integer::sum);
+                }
+                city.addBuilding(new LandingPad(buildingId, x, y, astronautTypes));
+            } else {
+                // Lunar module
+                city.addBuilding(new LunarModule(buildingId, x, y, buildingType));
+            }
         }
     }
 
